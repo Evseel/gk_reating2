@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оценка игры вратаря</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--card2:#172033;--accent:#22c55e;--danger:#ef4444;
+      --warn:#f59e0b;--text:#e2e8f0;--muted:#94a3b8;--line:#334155}
+*{box-sizing:border-box}
+body{margin:0;padding:32px 20px;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:1.5rem;margin:0 0 4px}
+h2{font-size:1.05rem;margin:0 0 14px}
+h3{font-size:.85rem;margin:16px 0 8px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
+.sub{color:var(--muted);font-size:.85rem;margin:0 0 24px}
+.section{background:var(--card);border-radius:14px;padding:22px;margin-bottom:20px;border:1px solid var(--line)}
+.tabs{display:flex;gap:8px;margin-bottom:18px}
+.tab{flex:1;padding:10px;border:none;border-radius:10px;background:var(--card2);color:var(--muted);
+     font-size:.88rem;cursor:pointer;border:1px solid var(--line);transition:.2s}
+.tab.active{background:var(--accent);color:#0f172a;font-weight:600;border-color:var(--accent)}
+.panel{display:none}.panel.active{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin-bottom:8px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:.8rem;color:var(--muted);font-weight:500}
+.field input{background:#0b1220;border:1px solid var(--line);color:var(--text);padding:10px 12px;
+             border-radius:9px;font-size:.95rem;width:100%;transition:.15s}
+.field input:focus{outline:2px solid var(--accent);border-color:transparent}
+.field input:disabled{opacity:.4;cursor:not-allowed}
+.field input.warn{border-color:var(--warn);background:#2a1e04}
+.field small{color:#64748b;font-size:.71rem}
+.meta .field label{color:var(--accent)}
+.upload-box{text-align:center}
+.btn-upload{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#0f172a;
+            border:none;border-radius:10px;padding:11px 20px;font-size:.9rem;font-weight:600;cursor:pointer}
+.btn-upload:hover{background:#16a34a}
+.drop-zone{margin-top:14px;border:2px dashed var(--line);border-radius:10px;padding:18px;
+           font-size:.8rem;color:var(--muted)}
+.drop-zone.dragover{border-color:var(--accent);background:#1a273d;color:var(--text)}
+.file-input{display:none}
+#uploadMsg{margin-top:10px}
+.msg{font-size:.82rem;padding:10px 12px;border-radius:8px;text-align:left;margin-bottom:6px}
+.msg.ok{background:#14532d;color:#86efac}.msg.err{background:#7f1d1d;color:#fca5a5}.msg.warn{background:#422006;color:#fcd34d}
+.example{margin-top:12px;font-size:.72rem;color:var(--muted);word-break:break-all;text-align:left}
+.example code{background:#0b1220;padding:2px 6px;border-radius:4px;color:#7dd3fc}
+.result{text-align:center;padding:4px 0}
+.rating{font-size:3.2rem;font-weight:700;color:var(--accent);line-height:1.1}
+.rating.negative{color:var(--danger)}
+.breakdown{margin-top:16px;text-align:left;font-size:.85rem}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.pos{color:var(--accent)}.neg{color:var(--danger)}.warn-txt{color:var(--warn)}
+.ctx{margin-top:10px;color:var(--muted);font-size:.8rem}
+.note{margin-top:12px;color:#64748b;font-size:.73rem;line-height:1.6}
+#warnings{margin-top:14px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btn{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:9px;
+     padding:9px 16px;font-size:.84rem;cursor:pointer;transition:.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0f172a;border-color:var(--accent);font-weight:600}
+.btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.table-scroll{overflow-x:auto;border-radius:10px;border:1px solid var(--line)}
+table.matches{width:100%;border-collapse:collapse;font-size:.8rem;min-width:820px}
+table.matches th,table.matches td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+table.matches th{background:var(--card2);color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.4px}
+table.matches td.score{font-weight:700;color:var(--accent);text-align:center}
+table.matches td.score.neg{color:var(--danger)}
+table.matches tr:last-child td{border-bottom:none}
+table.matches td.title{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{color:var(--muted);font-size:.84rem;padding:16px;text-align:center;background:var(--card2);border-radius:10px}
+#chartWrap{position:relative;width:100%;height:360px}
+#chartWrap canvas{width:100%;height:100%;display:block}
+.chart-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:.76rem;color:var(--muted)}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.chart-legend i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.chart-hint{font-size:.74rem;color:var(--muted);margin-top:8px;text-align:center}
+.keepers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.keeper-card{background:var(--card2);border-radius:10px;padding:14px;border:1px solid var(--line)}
+.keeper-card.self{border-color:var(--accent);background:#0f2a1a}
+.keeper-card h4{margin:0 0 8px;font-size:.9rem}
+.keeper-card .field{margin-bottom:6px}
+.keeper-card .field input{padding:7px 9px;font-size:.86rem}
+.compare-result{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.compare-box{background:var(--card2);border-radius:10px;padding:16px;text-align:center;border:1px solid var(--line)}
+.compare-box.self{border-color:var(--accent);background:#0f2a1a}
+.compare-box .name{font-size:.82rem;color:var(--muted);margin-bottom:4px}
+.compare-box .score{font-size:2rem;font-weight:700;color:var(--accent)}
+.compare-box .score.neg{color:var(--danger)}
+.compare-box .rank{font-size:.72rem;color:var(--muted);margin-top:4px}
+.compare-box .rank.first{color:var(--warn);font-weight:600}
+@media(max-width:700px){.keepers-grid,.compare-result,.grid,.meta{grid-template-columns:1fr}.section{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧤 Оценка игры вратаря</h1>
+  <p class="sub">Базовая оценка 6.00 · шкала 1–10 · коэффициенты синхронизированы с Python</p>
+
+  <div class="section">
+    <h2>📝 Данные матча</h2>
+    <div class="tabs">
+      <button class="tab active" data-panel="manual">✍️ Вручную</button>
+      <button class="tab" data-panel="upload">📂 Файл</button>
+    </div>
+
+    <div class="panel active" id="panel-manual">
+      <div class="meta">
+        <div class="field"><label>Название матча</label><input type="text" id="match_title" placeholder="Матч с Шинником"></div>
+        <div class="field"><label>Дата</label><input type="date" id="match_date"></div>
+      </div>
+
+      <h3>📊 Контекст (без баллов)</h3>
+      <div class="field" style="margin-bottom:6px"><label>Удары в створ</label>
+        <input type="number" id="shots_on_target" min="0" value="0">
+        <small>должно быть равно: сейвы + голы + пенальти</small></div>
+
+      <h3>✅ Плюсы</h3>
+      <div class="grid">
+        <div class="field"><label>Лёгкие сейвы</label><input type="number" id="saves_easy" min="0" value="0"><small>+0.02</small></div>
+        <div class="field"><label>Обычные сейвы</label><input type="number" id="saves_normal" min="0" value="0"><small>+0.10</small></div>
+        <div class="field"><label>Супер-сейвы</label><input type="number" id="saves_super" min="0" value="0"><small>+0.96</small></div>
+        <div class="field"><label>Отражённые пенальти</label><input type="number" id="penalties_saved" min="0" value="0"><small>+1.50</small></div>
+        <div class="field"><label>Точные пасы</label><input type="number" id="accurate_passes" min="0" value="0"><small>+0.03 (лимит +0.80)</small></div>
+        <div class="field"><label>Выход 1×1</label><input type="number" id="exits_and_claims" min="0" value="0"><small>+0.30</small></div>
+        <div class="field"><label>Выходы на подачу</label><input type="number" id="corners_and_crosses_ok" min="0" value="0"><small>+0.10</small></div>
+      </div>
+
+      <h3>❌ Минусы</h3>
+      <div class="grid">
+        <div class="field"><label>Пропущенные голы</label><input type="number" id="goals_conceded" min="0" value="0"><small>−0.50</small></div>
+        <div class="field"><label>Ошибки → гол</label><input type="number" id="errors_leading_to_goal" min="0" value="0"><small>−1.50</small></div>
+        <div class="field"><label>Неточные пасы</label><input type="number" id="inaccurate_passes" min="0" value="0"><small>−0.02 (лимит −0.60)</small></div>
+        <div class="field"><label>Ошибки без гола</label><input type="number" id="errors_no_goal" min="0" value="0"><small>−0.20 (лимит −0.60)</small></div>
+      </div>
+
+      <div class="note">
+        • Пенальти не считается повторно как сейв.<br>
+        • Ошибки → гол обнуляются при 0 голов и не могут быть больше голов.<br>
+        • Проверка: <b>удары в створ = (лёгкие + обычные + супер-сейвы) + голы + пенальти</b>.
+      </div>
+      <div id="warnings"></div>
+    </div>
+
+    <div class="panel" id="panel-upload">
+      <div class="upload-box">
+        <p>Выберите JSON-файл или перетащите его ниже</p>
+        <button class="btn-upload" id="pickBtn" type="button">📂 Выбрать файл</button>
+        <input type="file" id="fileInput" class="file-input" accept=".json,application/json">
+        <div class="drop-zone" id="drop">…или перетащите файл сюда</div>
+        <div id="uploadMsg"></div>
+      </div>
+      <div class="example">
+        Формат: <code>{"title":"...","date":"2024-08-15","saves_easy":2,"saves_normal":3,"saves_super":1,"goals_conceded":2,"shots_on_target":8,"penalties_saved":1,"accurate_passes":22,"inaccurate_passes":8,"exits_and_claims":3,"corners_and_crosses_ok":4,"errors_leading_to_goal":1,"errors_no_goal":1}</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🎯 Результат</h2>
+    <div class="result">
+      <div id="rating" class="rating">6.00</div>
+      <div class="ctx" id="ctx"></div>
+    </div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn primary" id="addToTable">➕ Добавить матч</button>
+    <button class="btn" id="saveCurrent">📥 Скачать (JSON)</button>
+  </div>
+
+  <div class="section" style="margin-top:20px">
+    <h2>📊 Сохранённые матчи</h2>
+    <div id="tableWrap"><div class="empty">Нет матчей. Нажмите «Добавить матч».</div></div>
+    <div id="summary" class="ctx" style="margin-top:10px"></div>
+    <div class="toolbar">
+      <button class="btn" id="exportTable">💾 Экспорт</button>
+      <button class="btn danger" id="clearTable">🗑 Очистить</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📈 Динамика по матчам</h2>
+    <div id="chartWrap"><canvas id="chart"></canvas></div>
+    <div class="chart-legend">
+      <span><i style="background:var(--accent)"></i> оценка</span>
+      <span><i style="background:var(--warn)"></i> средняя</span>
+      <span><i style="background:#64748b"></i> тренд</span>
+    </div>
+    <div class="chart-hint">Наведите на точку — увидите название и дату</div>
+  </div>
+
+  <div class="section">
+    <h2>👥 Сравнение вратарей</h2>
+    <p class="sub" style="margin:0 0 14px;font-size:.8rem">Вы — из формы выше. Заполните двух других вратарей.</p>
+    <div class="keepers-grid">
+      <div class="keeper-card self"><h4>🥇 Вы</h4><div class="ctx" id="selfSummary">—</div></div>
+      <div class="keeper-card"><h4>🥈 Вратарь 2</h4>
+        <div class="field"><label>Имя</label><input type="text" id="k2_name" placeholder="Соперник"></div>
+        <div class="field"><label>Лёгкие сейвы</label><input type="number" id="k2_saves_easy" min="0" value="0"></div>
+        <div class="field"><label>Обычные сейвы</label><input type="number" id="k2_saves_normal" min="0" value="0"></div>
+        <div class="field"><label>Супер-сейвы</label><input type="number" id="k2_saves_super" min="0" value="0"></div>
+        <div class="field"><label>Голы</label><input type="number" id="k2_goals_conceded" min="0" value="0"></div>
+        <div class="field"><label>Пенальти</label><input type="number" id="k2_penalties_saved" min="0" value="0"></div>
+        <div class="field"><label>Точные пасы</label><input type="number" id="k2_accurate_passes" min="0" value="0"></div>
+        <div class="field"><label>Неточные пасы</label><input type="number" id="k2_inaccurate_passes" min="0" value="0"></div>
+        <div class="field"><label>Выход 1×1</label><input type="number" id="k2_exits_and_claims" min="0" value="0"></div>
+        <div class="field"><label>Выходы на подачу</label><input type="number" id="k2_corners_and_crosses_ok" min="0" value="0"></div>
+        <div class="field"><label>Ошибки → гол</label><input type="number" id="k2_errors_leading_to_goal" min="0" value="0"></div>
+        <div class="field"><label>Ошибки без гола</label><input type="number" id="k2_errors_no_goal" min="0" value="0"></div>
+      </div>
+      <div class="keeper-card"><h4>🥉 Вратарь 3</h4>
+        <div class="field"><label>Имя</label><input type="text" id="k3_name" placeholder="Соперник"></div>
+        <div class="field"><label>Лёгкие сейвы</label><input type="number" id="k3_saves_easy" min="0" value="0"></div>
+        <div class="field"><label>Обычные сейвы</label><input type="number" id="k3_saves_normal" min="0" value="0"></div>
+        <div class="field"><label>Супер-сейвы</label><input type="number" id="k3_saves_super" min="0" value="0"></div>
+        <div class="field"><label>Голы</label><input type="number" id="k3_goals_conceded" min="0" value="0"></div>
+        <div class="field"><label>Пенальти</label><input type="number" id="k3_penalties_saved" min="0" value="0"></div>
+        <div class="field"><label>Точные пасы</label><input type="number" id="k3_accurate_passes" min="0" value="0"></div>
+        <div class="field"><label>Неточные пасы</label><input type="number" id="k3_inaccurate_passes" min="0" value="0"></div>
+        <div class="field"><label>Выход 1×1</label><input type="number" id="k3_exits_and_claims" min="0" value="0"></div>
+        <div class="field"><label>Выходы на подачу</label><input type="number" id="k3_corners_and_crosses_ok" min="0" value="0"></div>
+        <div class="field"><label>Ошибки → гол</label><input type="number" id="k3_errors_leading_to_goal" min="0" value="0"></div>
+        <div class="field"><label>Ошибки без гола</label><input type="number" id="k3_errors_no_goal" min="0" value="0"></div>
+      </div>
+    </div>
+    <div class="compare-result" id="compareResult"></div>
+  </div>
+</div>
+
+<script>
+/* КОНФИГ — синхронизирован с goalkeeper_model.py */
+var BASE=6, MIN=1, MAX=10;
+var COEF={
+  saves_easy:0.02, saves_normal:0.10, saves_super:0.96,
+  penalties_saved:1.50, accurate_passes:0.03, exits_and_claims:0.30,
+  corners_and_crosses_ok:0.10, goals_conceded:-0.50, errors_leading_to_goal:-1.50,
+  inaccurate_passes:-0.02, errors_no_goal:-0.20
+};
+var CAPS={accurate_passes:0.80, inaccurate_passes:0.60, errors_no_goal:0.60};
+var LABELS={
+  saves_easy:'Лёгкие сейвы', saves_normal:'Обычные сейвы', saves_super:'Супер-сейвы',
+  penalties_saved:'Пенальти', accurate_passes:'Точные пасы',
+  exits_and_claims:'Выход 1×1', corners_and_crosses_ok:'Выходы на подачу',
+  goals_conceded:'Пропущенные', errors_leading_to_goal:'Ошибки → гол',
+  inaccurate_passes:'Неточные пасы', errors_no_goal:'Ошибки без гола'
+};
+var FIELDS=Object.keys(COEF);
+var KNOWN=FIELDS.concat(['shots_on_target']);
+var SAVE_FIELDS=['saves_easy','saves_normal','saves_super'];
+
+var LAST=null, MATCHES=[], HOVER=null;
+function $(id){return document.getElementById(id);}
+function val(id){return Math.max(0,parseInt($(id).value)||0);}
+
+/* Вкладки */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+    document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active');});
+    t.classList.add('active'); $('panel-'+t.dataset.panel).classList.add('active');
+  });
+});
+
+/* Логика голов ↔ ошибок */
+function enforceLogic(){
+  var g=val('goals_conceded'), e=$('errors_leading_to_goal');
+  if(g===0){e.value=0;e.disabled=true;e.title='При 0 голов ошибок → гол быть не может';}
+  else{e.disabled=false;e.title='';if(val('errors_leading_to_goal')>g)e.value=g;}
+}
+
+/* Проверка: удары в створ = сейвы(все) + голы + пенальти */
+function checkShots(){
+  var sot=val('shots_on_target');
+  var sumSaves=SAVE_FIELDS.reduce(function(s,k){return s+val(k);},0);
+  var gc=val('goals_conceded');
+  var pen=val('penalties_saved');
+  var expected=sumSaves+gc+pen;
+
+  var warnIds=['shots_on_target'].concat(SAVE_FIELDS,['goals_conceded'],pen>0?['penalties_saved']:[]);
+  warnIds.forEach(function(id){$(id).classList.remove('warn');});
+
+  if(sot===0 && expected===0){ $('warnings').innerHTML=''; return; }
+  if(sot===expected){ $('warnings').innerHTML=''; return; }
+
+  warnIds.forEach(function(id){$(id).classList.add('warn');});
+
+  var diff=sot-expected;
+  var detail='сейвов ('+sumSaves+') + голов ('+gc+') + пенальти ('+pen+') = '+expected;
+  var msg=diff>0
+    ? '⚠️ Ударов в створ ('+sot+') больше, чем '+detail+'. Разница '+diff+' — возможно, эти удары прошли мимо или не засчитаны как сейвы.'
+    : '⚠️ Ударов в створ ('+sot+') меньше, чем '+detail+'. Каждый сейв, гол и отражённый пенальти — это удар в створ.';
+  $('warnings').innerHTML='<div class="msg warn">'+msg+'</div>';
+}
+
+/* Универсальная оценка */
+function score(stats){
+  var total=BASE;
+  FIELDS.forEach(function(k){
+    var c=(stats[k]||0)*COEF[k];
+    if(CAPS[k] && Math.abs(c)>CAPS[k]) c=(c>=0?CAPS[k]:-CAPS[k]);
+    total+=c;
+  });
+  return Math.min(MAX,Math.max(MIN,total));
+}
+
+/* Основной пересчёт */
+function calc(){
+  enforceLogic();
+  checkShots();
+
+  var stats={};
+  FIELDS.forEach(function(k){stats[k]=val(k);});
+
+  var total=BASE, rows='';
+  FIELDS.forEach(function(k){
+    var v=stats[k], c=v*COEF[k], capped=false;
+    if(CAPS[k] && Math.abs(c)>CAPS[k]){c=(c>=0?CAPS[k]:-CAPS[k]);capped=true;}
+    total+=c;
+    rows+='<div class="row"><span>'+LABELS[k]+' ('+v+' × '+COEF[k]+')'+
+          (capped?' <span class="warn-txt">(лимит)</span>':'')+'</span>'+
+          '<span class="'+(c>=0?'pos':'neg')+'">'+(c>=0?'+':'−')+Math.abs(c).toFixed(2)+'</span></div>';
+  });
+
+  var final=Math.min(MAX,Math.max(MIN,total));
+  var r=$('rating'); r.textContent=final.toFixed(2); r.classList.toggle('negative',final<5);
+  $('breakdown').innerHTML=rows;
+
+  var sot=val('shots_on_target');
+  var totalSaves=SAVE_FIELDS.reduce(function(s,k){return s+val(k);},0);
+  $('ctx').textContent=sot>0?('Ударов в створ: '+sot+' · сейвов: '+totalSaves+
+    ' ('+(totalSaves/sot*100).toFixed(1)+'%) · справочно'):'';
+
+  LAST={title:$('match_title').value.trim()||'Без названия', date:$('match_date').value||'',
+        shots_on_target:sot};
+  FIELDS.forEach(function(k){LAST[k]=stats[k];});
+  LAST.formula_score=+final.toFixed(2);
+
+  $('selfSummary').innerHTML='<b>'+LAST.title+'</b><br>'+(LAST.date||'без даты')+
+    '<br>Оценка: <b style="color:var(--accent)">'+LAST.formula_score.toFixed(2)+'</b>';
+
+  renderCompare();
+}
+
+document.querySelectorAll('#panel-manual input, .keeper-card input').forEach(function(el){
+  el.addEventListener('input',calc);
+});
+calc();
+
+/* Скачать текущий */
+$('saveCurrent').addEventListener('click',function(){
+  if(!LAST) return;
+  var blob=new Blob([JSON.stringify(LAST,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='goalkeeper_match_'+Date.now()+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* Добавить в таблицу */
+$('addToTable').addEventListener('click',function(){
+  if(!LAST) return;
+  if(!LAST.date){LAST.date=new Date().toISOString().slice(0,10);$('match_date').value=LAST.date;}
+  MATCHES.push(Object.assign({},LAST));
+  renderTable(); renderChart();
+});
+
+/* Таблица */
+function renderTable(){
+  var wrap=$('tableWrap');
+  if(!MATCHES.length){
+    wrap.innerHTML='<div class="empty">Нет матчей. Нажмите «Добавить матч».</div>';
+    $('summary').textContent=''; return;
+  }
+  var sorted=MATCHES.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var html='<div class="table-scroll"><table class="matches"><thead><tr>'+
+    '<th>Дата</th><th>Матч</th><th>Оценка</th>'+
+    FIELDS.map(function(k){return '<th>'+LABELS[k]+'</th>';}).join('')+
+    '<th>Удары</th></tr></thead><tbody>';
+  sorted.forEach(function(m){
+    var cls=(m.formula_score<5)?'score neg':'score';
+    html+='<tr><td>'+(m.date||'—')+'</td>'+
+      '<td class="title" title="'+m.title+'">'+m.title+'</td>'+
+      '<td class="'+cls+'">'+m.formula_score.toFixed(2)+'</td>'+
+      FIELDS.map(function(k){return '<td style="text-align:center">'+(m[k]||0)+'</td>';}).join('')+
+      '<td style="text-align:center">'+(m.shots_on_target||0)+'</td>'+
+      '</tr>';
+  });
+  html+='</tbody></table></div>';
+  wrap.innerHTML=html;
+
+  var scores=MATCHES.map(function(m){return m.formula_score;});
+  var sum=scores.reduce(function(a,b){return a+b;},0);
+  $('summary').innerHTML='Матчей: <b>'+MATCHES.length+'</b> · Средняя: <b>'+
+    (sum/MATCHES.length).toFixed(2)+'</b> · Лучшая: <b>'+Math.max.apply(null,scores).toFixed(2)+
+    '</b> · Худшая: <b>'+Math.min.apply(null,scores).toFixed(2)+'</b>';
+}
+
+/* Экспорт / очистка */
+$('exportTable').addEventListener('click',function(){
+  if(!MATCHES.length){alert('Таблица пуста');return;}
+  var blob=new Blob([JSON.stringify(MATCHES,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='goalkeeper_matches_'+Date.now()+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+});
+$('clearTable').addEventListener('click',function(){
+  if(!MATCHES.length||!confirm('Удалить все матчи?')) return;
+  MATCHES=[]; renderTable(); renderChart();
+});
+
+/* Сравнение вратарей */
+function renderCompare(){
+  function read(prefix){
+    var o={};
+    FIELDS.forEach(function(k){o[k]=val(prefix+k);});
+    return o;
+  }
+  var arr=[
+    {name:'Вы',score:LAST.formula_score,self:true},
+    {name:$('k2_name').value.trim()||'Вратарь 2',score:score(read('k2_'))},
+    {name:$('k3_name').value.trim()||'Вратарь 3',score:score(read('k3_'))}
+  ];
+  var best=Math.max.apply(null,arr.map(function(x){return x.score;}));
+  $('compareResult').innerHTML=arr.map(function(k){
+    var isBest=Math.abs(k.score-best)<0.001;
+    return '<div class="compare-box'+(k.self?' self':'')+'">'+
+      '<div class="name">'+k.name+'</div>'+
+      '<div class="'+(k.score<5?'score neg':'score')+'">'+k.score.toFixed(2)+'</div>'+
+      '<div class="rank'+(isBest?' first':'')+'">'+(isBest?'🥇 Лучший':'')+'</div></div>';
+  }).join('');
+}
+
+/* График */
+function renderChart(){
+  var canvas=$('chart'), wrap=$('chartWrap');
+  var dpr=window.devicePixelRatio||1, W=wrap.clientWidth, H=wrap.clientHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  var ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+
+  var padL=44, padR=20, padT=20, padB=44;
+  var plotW=W-padL-padR, plotH=H-padT-padB;
+
+  ctx.strokeStyle='#334155'; ctx.beginPath();
+  ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+plotH); ctx.lineTo(padL+plotW,padT+plotH); ctx.stroke();
+
+  ctx.fillStyle='#94a3b8'; ctx.font='12px system-ui';
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  for(var v=1;v<=10;v++){
+    var y=padT+plotH-((v-MIN)/(MAX-MIN))*plotH;
+    ctx.strokeStyle='#1e293b'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+plotW,y); ctx.stroke();
+    ctx.fillText(v,padL-8,y);
+  }
+
+  if(!MATCHES.length){
+    ctx.fillStyle='#64748b'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='14px system-ui';
+    ctx.fillText('Добавьте матчи — появится график',padL+plotW/2,padT+plotH/2);
+    HOVER=null; return;
+  }
+
+  var data=MATCHES.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var n=data.length;
+  function xAt(i){return n===1?padL+plotW/2:padL+(i/(n-1))*plotW;}
+  function yAt(s){return padT+plotH-((s-MIN)/(MAX-MIN))*plotH;}
+
+  var avg=data.reduce(function(s,m){return s+m.formula_score;},0)/n;
+  ctx.strokeStyle='#f59e0b'; ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(padL,yAt(avg)); ctx.lineTo(padL+plotW,yAt(avg)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b'; ctx.textAlign='left'; ctx.textBaseline='bottom';
+  ctx.fillText('ср. '+avg.toFixed(2),padL+6,yAt(avg)-4);
+
+  if(n>=2){
+    var xs=[],ys=[];
+    for(var i=0;i<n;i++){xs.push(i);ys.push(data[i].formula_score);}
+    var mx=xs.reduce(function(a,b){return a+b;},0)/n, my=ys.reduce(function(a,b){return a+b;},0)/n;
+    var num=0,den=0;
+    for(var j=0;j<n;j++){num+=(xs[j]-mx)*(ys[j]-my);den+=(xs[j]-mx)*(xs[j]-mx);}
+    var slope=den?num/den:0, ic=my-slope*mx;
+    ctx.strokeStyle='#64748b'; ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(xAt(0),yAt(ic)); ctx.lineTo(xAt(n-1),yAt(ic+slope*(n-1))); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.strokeStyle='#22c55e'; ctx.lineWidth=2.5; ctx.beginPath();
+  for(var k=0;k<n;k++){
+    var x=xAt(k),y=yAt(data[k].formula_score);
+    if(k===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  for(var k2=0;k2<n;k2++){
+    var x2=xAt(k2),y2=yAt(data[k2].formula_score);
+    ctx.fillStyle=data[k2].formula_score<5?'#ef4444':'#22c55e';
+    ctx.beginPath(); ctx.arc(x2,y2,HOVER===k2?7:5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#0f172a'; ctx.lineWidth=2; ctx.stroke();
+  }
+
+  ctx.fillStyle='#94a3b8'; ctx.font='11px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  var step=Math.ceil(n/6);
+  for(var p=0;p<n;p+=step){
+    var d=data[p].date||('#'+(p+1));
+    if(d.length===10) d=d.slice(5);
+    ctx.fillText(d,xAt(p),padT+plotH+10);
+  }
+
+  if(HOVER!==null && HOVER<n){
+    var m=data[HOVER];
+    var text=m.title+' · '+(m.date||'без даты')+' · '+m.formula_score.toFixed(2);
+    ctx.font='12px system-ui';
+    var tw=ctx.measureText(text).width;
+    var tx=xAt(HOVER), ty=yAt(m.formula_score);
+    var bx=Math.min(Math.max(tx-tw/2-10,padL),W-tw-30);
+    var by=Math.max(ty-38,padT);
+    ctx.fillStyle='#0b1220'; ctx.strokeStyle='#22c55e';
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(bx,by,tw+20,26,6); else ctx.rect(bx,by,tw+20,26);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#e2e8f0'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(text,bx+10,by+13);
+  }
+}
+
+(function(){
+  var canvas=$('chart');
+  canvas.addEventListener('mousemove',function(e){
+    if(!MATCHES.length){HOVER=null;return;}
+    var rect=canvas.getBoundingClientRect();
+    var padL=44, padR=20;
+    var plotW=rect.width-padL-padR;
+    var data=MATCHES.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+    var n=data.length;
+    if(n===1){HOVER=0;renderChart();return;}
+    var idx=Math.round((e.clientX-rect.left-padL)/plotW*(n-1));
+    idx=Math.max(0,Math.min(n-1,idx));
+    if(HOVER!==idx){HOVER=idx;renderChart();}
+  });
+  canvas.addEventListener('mouseleave',function(){HOVER=null;renderChart();});
+  window.addEventListener('resize',renderChart);
+})();
+
+/* Загрузка файла */
+var drop=$('drop'), fileInput=$('fileInput'), pickBtn=$('pickBtn'), uploadMsg=$('uploadMsg');
+function showMsg(t,ok){uploadMsg.innerHTML='<div class="msg '+(ok?'ok':(ok===null?'warn':'err'))+'">'+t+'</div>';}
+
+function loadOne(d){
+  var n=0;
+  KNOWN.forEach(function(k){if(typeof d[k]==='number'){$(k).value=d[k];n++;}});
+  if(typeof d.title==='string') $('match_title').value=d.title;
+  if(typeof d.date==='string') $('match_date').value=d.date;
+  return n;
+}
+
+function handleFile(file){
+  if(!file) return;
+  if(!file.name.toLowerCase().endsWith('.json')){showMsg('❌ Нужен .json',false);return;}
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      if(Array.isArray(data)){
+        var ok=0;
+        data.forEach(function(m){if(loadOne(m)>0){calc();MATCHES.push(Object.assign({},LAST));ok++;}});
+        renderTable(); renderChart();
+        showMsg('✅ Загружено матчей: '+ok+' из '+data.length,true);
+      }else{
+        var n=loadOne(data);
+        if(!n){showMsg('❌ Нет знакомых полей',false);return;}
+        calc(); showMsg('✅ Загружено полей: '+n,true);
+      }
+    }catch(err){showMsg('❌ '+err.message,false);}
+  };
+  r.readAsText(file,'UTF-8');
+}
+
+pickBtn.addEventListener('click',function(){fileInput.click();});
+fileInput.addEventListener('change',function(){handleFile(fileInput.files[0]);});
+drop.addEventListener('dragover',function(e){e.preventDefault();drop.classList.add('dragover');});
+drop.addEventListener('dragleave',function(){drop.classList.remove('dragover');});
+drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('dragover');handleFile(e.dataTransfer.files[0]);});
+
+renderChart(); renderCompare();
+</script>
+</body>
+</html>
